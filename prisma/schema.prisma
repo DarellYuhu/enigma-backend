@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique
+  password    String
+  displayName String
+  role        Role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Page {
+  id                 String   @id
+  name               String
+  clientId           String
+  clientSecret       String
+  appScopedUserId    String
+  shortLivedToken    String
+  pageLongLivedToken String
+  userLongLivedToken String
+  isActive           Boolean  @default(true)
+  Metric             Metric[]
+}
+
+model Metric {
+  id                String              @id
+  name              String
+  period            String
+  title             String?
+  type              MetricType
+  valueType         ValueType
+  description       String
+  pageId            String
+  Page              Page                @relation(references: [id], fields: [pageId])
+  Values            Values[]
+  DemographicValues DemographicValues[]
+
+  @@unique([name, pageId])
+}
+
+model DemographicValues {
+  id       Int       @id @default(autoincrement())
+  value    Json
+  end_time DateTime?
+  metricId String
+  Metric   Metric    @relation(fields: [metricId], references: [id])
+
+  @@unique([metricId, end_time])
+}
+
+model Values {
+  id       Int       @id @default(autoincrement())
+  value    Int
+  end_time DateTime?
+  metricId String
+  Metric   Metric    @relation(fields: [metricId], references: [id])
+
+  @@unique([metricId, end_time])
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+enum MetricType {
+  STATISTIC
+  DEMOGRAPHIC
+}
+
+enum ValueType {
+  LIFETIME
+  DAILY
+}
