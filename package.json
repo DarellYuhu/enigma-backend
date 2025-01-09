@@ -13,7 +13,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
+    "debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
@@ -26,7 +26,9 @@
     "db:migrate": "dotenv -e .env.development npx prisma migrate dev",
     "db:seed": "dotenv -e .env.development npx prisma db seed",
     "db:reset": "dotenv -e .env.development npx prisma migrate reset",
-    "db:generate": "npx prisma generate"
+    "db:generate": "npx prisma generate",
+    "docker:build:staging": "docker build -t enigma-backend:staging -f docker/staging/Dockerfile .",
+    "docker:save:staging": "docker image save enigma-backend:staging | gzip > enigma-backend-staging-docker.tar.gz"
   },
   "dependencies": {
     "@nestjs/axios": "^3.1.3",

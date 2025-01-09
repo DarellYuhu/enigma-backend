@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron, SchedulerRegistry } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -15,7 +15,6 @@ import { Page, Prisma } from '@prisma/client';
 export class SchedulerService {
   constructor(
     private configService: ConfigService,
-    private schedulerRegistry: SchedulerRegistry,
     private prisma: PrismaService,
     private httpService: HttpService,
   ) {}

@@ -6,10 +6,11 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { FacebookModule } from 'src/facebook/facebook.module';
 import { SchedulerService } from 'src/scheduler/scheduler.service';
+import { PageRepository } from './page.repository';
 
 @Module({
   imports: [HttpModule, ConfigModule, FacebookModule],
   controllers: [PageController],
-  providers: [PageService, PrismaService, SchedulerService],
+  providers: [PageService, PrismaService, SchedulerService, PageRepository],
 })
 export class PageModule {}

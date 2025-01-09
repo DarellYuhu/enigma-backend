@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { FacebookService } from 'src/facebook/facebook.service';
 import { format } from 'date-fns';
 import { SchedulerService } from 'src/scheduler/scheduler.service';
+import { PageRepository } from './page.repository';
 
 @Injectable()
 export class PageService {
@@ -11,6 +12,7 @@ export class PageService {
     private prismaService: PrismaService,
     private facebookService: FacebookService,
     private schedulerService: SchedulerService,
+    private pageRepository: PageRepository,
   ) {}
 
   async create(createPageDto: CreatePageDto) {
@@ -37,86 +39,59 @@ export class PageService {
   }
 
   async findAll(date?: Date[]) {
-    const metricsNeed = [
-      'page_follows',
-      'page_fans',
-      'page_post_engagements',
-      'page_impressions',
-      'page_video_views',
-    ];
-    // const metrics = await this.prismaService.metric
-    //   .groupBy({
-    //     by: ['name', 'title', 'description'],
-    //     where: {
-    //       name: {
-    //         in: metricsNeed,
-    //       },
-    //     },
-    //   })
-    //   .then((data) =>
-    //     Object.fromEntries(data.map((item) => [item.name, item])),
-    //   );
+    const pages = await this.pageRepository.getPages({
+      from: date?.[0],
+      to: date?.[1],
+    });
+    const normalizePages = pages.map(({ Metric, ...pages }) => ({
+      ...pages,
+      metrics: Object.fromEntries(
+        Metric.map(({ Values, ...metric }) => {
+          const sum =
+            metric.valueType === 'LIFETIME'
+              ? (Values[0]?.value ?? 0)
+              : Values.reduce((a, b) => a + b.value, 0);
+          return [metric.name, sum];
+        }),
+      ),
+    }));
 
-    const metrics1 = await this.prismaService.$queryRaw`
-      SELECT m."name", SUM(v."value") as value 
-      FROM "Metric" as m 
-      FULL JOIN "Values" as v ON m."id" = v."metricId" 
-      WHERE m."valueType" = 'DAILY'
-      AND v."end_time" >= ${date?.[0]} AND v."end_time" <= ${date?.[1]}
-      GROUP BY m."name" 
-      ORDER BY m."name" ASC;
-      `.then((data: { name: string; value: bigint }[]) =>
-      data
-        .filter((item) => metricsNeed.includes(item.name))
-        .map((item) => [item.name, Number(item.value)]),
+    const metrics1 = await this.pageRepository.getTotalMetrics({
+      from: date?.[0],
+      to: date?.[1],
+    });
+    const metrics2 = await this.pageRepository
+      .getTotalLifetimeMetrics(date?.[2])
+      .then((item) => {
+        const group = Object.groupBy(item, (item) => item.name);
+        return Object.entries(group).map(([key, value]) => {
+          return [key, value?.reduce((a, b) => a + b.Values[0].value, 0)];
+        });
+      });
+
+    const pagesDemographic = Object.groupBy(
+      await this.pageRepository.getPagesDemographic(),
+      (item) => item.name,
     );
-
-    const metrics2 = await this.prismaService.$queryRaw`
-      SELECT m."name", SUM(v."value"), MAX(v."end_time") as value 
-      FROM "Metric" as m 
-      FULL JOIN "Values" as v ON m."id" = v."metricId" 
-      WHERE m."valueType" = 'LIFETIME'
-      AND v."end_time" >= ${date?.[0]} AND v."end_time" <= ${date?.[1]}
-      GROUP BY m."name"
-    `.then((data: { name: string; sum: bigint; value: Date }[]) =>
-      data
-        .filter((item) => metricsNeed.includes(item.name))
-        .map((item) => [item.name, Number(item.sum)]),
-    );
-
-    const pages = await this.prismaService.page.findMany({
-      select: { id: true, name: true, isActive: true },
+    const demographic = Object.entries(pagesDemographic).map(([key, value]) => {
+      const parsed = value?.map(
+        (item) => item.DemographicValues[0]?.value as Record<string, number>,
+      );
+      const sum = parsed?.reduce((acc, obj) => {
+        for (const key in obj) {
+          acc[key] = (acc[key] || 0) + obj[key];
+        }
+        return acc;
+      }, {});
+      const arr = Object.entries(sum ?? {}).map(([key, value]) => ({
+        key: key.split(',')[0],
+        value,
+      }));
+      return [key, arr];
     });
 
-    const timeSeries = await this.prismaService.metric
-      .findMany({
-        include: {
-          Values: {
-            where: {
-              end_time: {
-                gte: date ? date[0] : undefined,
-                lte: date ? date[1] : undefined,
-              },
-            },
-            orderBy: {
-              end_time: 'asc',
-            },
-          },
-        },
-        where: {
-          name: {
-            in: [
-              'page_daily_follows',
-              'page_fan_adds',
-              'page_views_total',
-              'page_post_engagements',
-              'page_impressions',
-              'page_video_views',
-              'page_video_complete_views_30s',
-            ],
-          },
-        },
-      })
+    const timeSeries = await this.pageRepository
+      .getTimeSeries()
       .then((data) => {
         const grouping = Object.groupBy(data, (item) => item.name);
         const sum = Object.entries(grouping).map(([key, value]) => {
@@ -141,8 +116,9 @@ export class PageService {
       });
 
     return {
-      pages,
+      pages: normalizePages,
       metrics: Object.fromEntries([...metrics1, ...metrics2]),
+      demographic: Object.fromEntries(demographic),
       timeSeries,
     };
   }
