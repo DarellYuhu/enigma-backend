@@ -11,6 +11,8 @@ import { PageModule } from './page/page.module';
 import { AuthModule } from './auth/auth.module';
 import { FacebookService } from './facebook/facebook.service';
 import { FacebookModule } from './facebook/facebook.module';
+import { GroupModule } from './group/group.module';
+import { PageActivityModule } from './page-activity/page-activity.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { FacebookModule } from './facebook/facebook.module';
     PageModule,
     AuthModule,
     FacebookModule,
+    GroupModule,
+    PageActivityModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, SchedulerService, FacebookService],

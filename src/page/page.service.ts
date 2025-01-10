@@ -61,7 +61,7 @@ export class PageService {
       to: date?.[1],
     });
     const metrics2 = await this.pageRepository
-      .getTotalLifetimeMetrics(date?.[2])
+      .getTotalLifetimeMetrics(date?.[1])
       .then((item) => {
         const group = Object.groupBy(item, (item) => item.name);
         return Object.entries(group).map(([key, value]) => {
@@ -115,9 +115,17 @@ export class PageService {
         return Object.fromEntries(sum);
       });
 
+    const groups = await this.pageRepository.getGroups().then((item) =>
+      item.map(({ GroupPage, ...item }) => ({
+        ...item,
+        pageIds: GroupPage.map(({ pageId }) => pageId),
+      })),
+    );
+
     return {
       pages: normalizePages,
       metrics: Object.fromEntries([...metrics1, ...metrics2]),
+      groups,
       demographic: Object.fromEntries(demographic),
       timeSeries,
     };

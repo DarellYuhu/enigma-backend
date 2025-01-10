@@ -70,6 +70,16 @@ export class PageRepository {
     });
   }
 
+  getGroups() {
+    return this.prismaService.group.findMany({
+      include: {
+        GroupPage: {
+          select: { pageId: true },
+        },
+      },
+    });
+  }
+
   getPagesDemographic(lte?: Date) {
     return this.prismaService.metric.findMany({
       where: { type: 'DEMOGRAPHIC' },

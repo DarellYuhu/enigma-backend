@@ -24,7 +24,7 @@ model User {
 }
 
 model Page {
-  id                 String   @id
+  id                 String      @id
   name               String
   clientId           String
   clientSecret       String
@@ -32,8 +32,31 @@ model Page {
   shortLivedToken    String
   pageLongLivedToken String
   userLongLivedToken String
-  isActive           Boolean  @default(true)
+  isActive           Boolean     @default(true)
   Metric             Metric[]
+  GroupPage          GroupPage[]
+}
+
+model Group {
+  id        String      @id
+  type      String
+  name      String
+  GroupPage GroupPage[]
+}
+
+model GroupPage {
+  groupId String
+  Group   Group  @relation(fields: [groupId], references: [id])
+  pageId  String
+  Page    Page   @relation(fields: [pageId], references: [id])
+
+  @@unique([groupId, pageId])
+}
+
+model PageActivity {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @unique @db.Date
+  operations Int
 }
 
 model Metric {
