@@ -15,6 +15,14 @@ export class PageService {
     private pageRepository: PageRepository,
   ) {}
 
+  private metricsNeed = [
+    'page_follows',
+    'page_fans',
+    'page_post_engagements',
+    'page_impressions',
+    'page_video_views',
+  ];
+
   async create(createPageDto: CreatePageDto) {
     const { access_token: longLivedUserToken } =
       await this.facebookService.generateUserLongLivedToken({
@@ -131,38 +139,31 @@ export class PageService {
     };
   }
 
-  async findOne(id: string) {
-    const page = await this.prismaService.page.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        isActive: true,
-        Metric: {
-          include: {
-            Values: { select: { end_time: true, value: true } },
-            DemographicValues: { select: { end_time: true, value: true } },
-          },
-        },
-      },
-    });
-    if (!page) throw new NotFoundException('Page not found');
-    const data = {
-      ...page,
-      Metric: Object.fromEntries(
-        page.Metric.map(({ DemographicValues, Values, ...metric }) => [
-          metric.name,
-          {
-            ...metric,
-            value: Array.from(
-              metric.type === 'DEMOGRAPHIC' ? DemographicValues : Values,
-            ),
-          },
-        ]),
-      ),
-    };
+  async findOne(id: string, date?: Date[]) {
+    const page = await this.pageRepository.getPage(id, date);
 
-    return data;
+    if (!page)
+      throw new NotFoundException('Page you are looking for cannot be found');
+
+    const { Metric, ...rest } = page;
+
+    const aggregate = Metric.map((metric) => {
+      let value = 0;
+      if (metric.valueType === 'DAILY') {
+        value = metric.Values.reduce((curr, acc) => curr + acc.value, value);
+      } else value = metric.Values[0].value;
+      return [metric.name, value];
+    });
+
+    const timeseries = Metric.map((metric) => {
+      return [metric.name, metric.Values];
+    });
+
+    return {
+      ...rest,
+      aggregate: Object.fromEntries(aggregate),
+      timeseries: Object.fromEntries(timeseries),
+    };
   }
 
   async trigger() {

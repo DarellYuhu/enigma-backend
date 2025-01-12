@@ -56,8 +56,9 @@ export class PageController {
 
   @ApiOkResponse({ type: GetPageByIdResponseDto })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pageService.findOne(id);
+  findOne(@Param('id') id: string, @Query() query: { date?: string }) {
+    const date = query.date?.split(',').map((date: string) => new Date(date));
+    return this.pageService.findOne(id, date);
   }
 
   // @Patch(':id')

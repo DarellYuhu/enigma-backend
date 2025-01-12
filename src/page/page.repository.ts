@@ -130,4 +130,26 @@ export class PageRepository {
       },
     });
   }
+
+  getPage(id: string, date?: Date[]) {
+    return this.prismaService.page.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        Metric: {
+          where: { name: { in: this.metricsNeed } },
+          include: {
+            Values: {
+              where: { end_time: { gte: date?.[0], lte: date?.[1] } },
+              orderBy: { end_time: { sort: 'desc' } },
+              select: { end_time: true, value: true },
+            },
+            // DemographicValues: true,
+          },
+        },
+      },
+    });
+  }
 }
