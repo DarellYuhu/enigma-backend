@@ -156,7 +156,14 @@ export class PageService {
     });
 
     const timeseries = Metric.map((metric) => {
-      return [metric.name, metric.Values];
+      return [
+        metric.name,
+        metric.Values.sort(
+          (a, b) =>
+            Math.floor(new Date(a.end_time!).getTime() / 1000) -
+            Math.floor(new Date(b.end_time!).getTime() / 1000),
+        ),
+      ];
     });
 
     return {
