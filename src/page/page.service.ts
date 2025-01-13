@@ -15,14 +15,6 @@ export class PageService {
     private pageRepository: PageRepository,
   ) {}
 
-  private metricsNeed = [
-    'page_follows',
-    'page_fans',
-    'page_post_engagements',
-    'page_impressions',
-    'page_video_views',
-  ];
-
   async create(createPageDto: CreatePageDto) {
     const { access_token: longLivedUserToken } =
       await this.facebookService.generateUserLongLivedToken({
@@ -124,10 +116,34 @@ export class PageService {
       });
 
     const groups = await this.pageRepository.getGroups().then((item) =>
-      item.map(({ GroupPage, ...item }) => ({
-        ...item,
-        pageIds: GroupPage.map(({ pageId }) => pageId),
-      })),
+      item.map(({ GroupPage, ...item }) => {
+        const pages = GroupPage.map(({ Page: { Metric, ...rest } }) => {
+          const metrics = Object.fromEntries(
+            Metric.map((item) => {
+              const value =
+                item.valueType === 'DAILY'
+                  ? item.Values.reduce((a, b) => a + b.value, 0)
+                  : item.Values[0].value;
+              return [item.name, value];
+            }),
+          );
+          return { ...rest, metrics };
+        });
+        const aggregate = pages.reduce(
+          (acc, item) => {
+            for (const key in item.metrics) {
+              acc[key] = (acc[key] || 0) + item.metrics[key];
+            }
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+        return {
+          ...item,
+          pages,
+          aggregate,
+        };
+      }),
     );
 
     return {

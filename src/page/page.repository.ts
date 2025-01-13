@@ -74,7 +74,23 @@ export class PageRepository {
     return this.prismaService.group.findMany({
       include: {
         GroupPage: {
-          select: { pageId: true },
+          select: {
+            pageId: true,
+            Page: {
+              select: {
+                id: true,
+                name: true,
+                Metric: {
+                  select: {
+                    name: true,
+                    Values: { orderBy: { end_time: { sort: 'desc' } } },
+                    valueType: true,
+                  },
+                  where: { name: { in: this.metricsNeed } },
+                },
+              },
+            },
+          },
         },
       },
     });
